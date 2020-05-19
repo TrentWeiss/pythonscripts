@@ -24,7 +24,7 @@ username = args.username
 host = args.host
 print(folders)
 print(output_dir)
-password = getpass.getpass(prompt='Password for %s on %s: ', (username,host), stream=None))
+password = getpass.getpass(prompt='Password for %s on %s: ' % (username,host), stream=None)
 ssh = SSHClient()
 ssh.load_system_host_keys()
 ssh.connect(host,username=username,password=password)
