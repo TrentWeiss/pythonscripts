@@ -1,3 +1,5 @@
+#/usr/bin/env python
+
 import glob, os, argparse
 from shutil import copyfile
 parser = argparse.ArgumentParser("Automatically copy dll dependencies from vcpkg")
