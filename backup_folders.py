@@ -17,9 +17,9 @@ def sevenZipFolder(folder: str):
 
 parser = argparse.ArgumentParser("7z folders and scp the resulting archives to a backup server")
 parser.add_argument('folders', metavar='folder', type=str, nargs='+',  help='The folders to back up')
-parser.add_argument('--host', type=str, required=True , help="Host to scp to")
-parser.add_argument('--username', type=str, required=True ,  help="Username on the backup system")
-parser.add_argument('--output_dir', type=str, default="~" ,  help='Directory to put the resulting archives on backup system')
+parser.add_argument('--host', type=str, required=True , help="Host to back up the archive to via scp")
+parser.add_argument('--username', type=str, required=True ,  help="Username on the backup host")
+parser.add_argument('--output_dir', type=str, default="~" ,  help='Directory to put the resulting archives on backup host')
 args = parser.parse_args()
 folders = args.folders
 output_dir = args.output_dir
