@@ -7,8 +7,7 @@ import argparse
 import subprocess
 
 def sevenZipFolder(folder: str):
-    if folder[-1]=='\\':
-        folder = folder[:-1]
+    folder = os.path.normpath(folder)
     archive_name = os.path.basename(folder) + ".7z"
     print("7zipping %s into %s" %(folder, archive_name))
     output = subprocess.run(["7z", "a", archive_name, folder])
