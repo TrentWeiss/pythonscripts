@@ -16,8 +16,7 @@ if vcpkgbin is None:
     raise ValueError("you must either specify a vcpkg binary directory with --vcpkgbin or set the VCPKG_BIN_DIR environment variable")
 files = glob.glob(os.path.join(buildpath,"**","*.dll"),recursive=True)
 files = list(set([os.path.basename(f) for f in files]))
-for f in files:
-    basefile = os.path.basename(f)
+for basefile in files:
     installfile = os.path.join(installbin,basefile)
     vcpkgfile = os.path.join(vcpkgbin,basefile)
     if os.path.exists(vcpkgfile) and ((not os.path.exists(installfile)) or force) :
