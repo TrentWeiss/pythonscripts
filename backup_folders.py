@@ -21,10 +21,11 @@ parser.add_argument('--host', type=str, required=True , help="Host to back up th
 parser.add_argument('--username', type=str, required=True ,  help="Username on the backup host")
 parser.add_argument('--output_dir', type=str, default="~" ,  help='Directory to put the resulting archives on backup host')
 args = parser.parse_args()
-folders = args.folders
-output_dir = args.output_dir
-username = args.username
-host = args.host
+argdict = vars(args)
+folders = argdict["folders"]
+output_dir = argdict["output_dir"]
+username = argdict["username"]
+host = argdict["host"]
 print(folders)
 print(output_dir)
 password = getpass.getpass(prompt='Enter password for %s on %s: ' % (username,host), stream=None)
@@ -44,3 +45,4 @@ for folder in folders:
     scp = SCPClient(ssh.get_transport())
     scp.put(archive_name, remote_path=output_dir)
     scp.close()
+
