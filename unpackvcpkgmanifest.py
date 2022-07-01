@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser("Unpack the vcpkg manifest into a list of packa
 parser.add_argument("manifest", type=str, help=".json file containing the vcpkg manifest")
 parser.add_argument("--packages-skip", nargs='+', default="", help="Packages to skip")
 parser.add_argument("--triplets-skip", nargs='+', default="", help="Triplets to skip")
-parser.add_argument("--replace-triplets", nargs='*', action=keyvalue, help="Json dictionary for triplet replacement")
+parser.add_argument("--replace-triplets", nargs='*', action=keyvalue, help="arbitrary number of triplet replacements of the form <triplet1>=<triplet2>. All packages installed on <triplet1> will instead be output as <triplet2>")
 args = parser.parse_args()
 argdict = vars(args)
 with open(argdict["manifest"], "rb") as f:
