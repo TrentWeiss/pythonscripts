@@ -27,6 +27,7 @@ parser.add_argument("filepath", type=str, help="What library or directory to dep
 parser.add_argument("--extra-paths", nargs="+", default=None, help="Any extra paths to look for dlls on top of the vcpkg bin dir")
 parser.add_argument("--vcpkgbin", type=str, default=os.getenv("VCPKG_BIN_DIR"), required=False, help="bin directory of vcpkg installation. Defaults to an environment variable named VCPKG_BIN_DIR")
 parser.add_argument("--force", action="store_true", help="Overwrite dlls that already exist in the same directory as \"filepath\"")
+parser.add_argument("--exe-dlls", action="store_true", help="Also copy over dll files found in the \"DLLs\" subfolder of the directory containing python.exe")
 parser.add_argument("--depth", type=int, default=3)
 
 args = parser.parse_args()
@@ -44,7 +45,6 @@ elif os.path.isdir(filepath):
             filestodeploy.append(os.path.join(filedir, entry.name))
 else:
     raise ValueError("%s is not a file or directory" % (filepath,))
-
 vcpkgbin = argdict["vcpkgbin"]
 if vcpkgbin is None:
     raise ValueError("you must either specify a vcpkg binary directory with --vcpkgbin or set the VCPKG_BIN_DIR environment variable")
@@ -59,22 +59,40 @@ if argdict["extra_paths"] is not None:
         extrabinaries = extrabinaries.union({f for f in set(glob.glob(os.path.join(path,"*.dll"), recursive=False)) if os.path.basename(f) not in vcpkgbinaries})
 
 
-dependencies_exe : Union[str,None] = which("Dependencies.exe")
-if dependencies_exe is None:
-    raise FileNotFoundError("Could not find executable \"Dependencies.exe\". is it on your PATH variable?")
-dependencies_dir = os.path.dirname(dependencies_exe)
+dlldiag_exe : Union[str,None] = which("dlldiag.exe")
+if dlldiag_exe is None:
+    raise FileNotFoundError("Could not find executable \"dlldiag.exe\". is the pip package dll-diagnostics installed?")
+dlldiag_dir = os.path.dirname(dlldiag_exe)
 windeployqt_exe : Union[str,None] = which("windeployqt.exe")
 if windeployqt_exe is None:
     raise FileNotFoundError("Could not find executable \"windeployqt.exe\". is it on your PATH variable?")
 windeployqt_dir = os.path.dirname(windeployqt_exe)
 reduced_path = list(str.split(os.getenv("PATH"), sep=os.pathsep))
-reduced_path.remove(windeployqt_dir)
-reduced_path.remove(dependencies_dir)
-reduced_path.remove(os.path.dirname(sys.executable))
+reduced_path.remove(dlldiag_dir)
+exedir = os.path.dirname(sys.executable)
+for path in reduced_path:
+    if not os.path.exists(path):
+        reduced_path.remove(path)
+        continue
+    if (not path==exedir) and (not path==dlldiag_dir) and (vcpkgroot in path):
+        reduced_path.remove(path)
+    for entry in os.scandir(path):
+        if entry.is_file() and (entry.name in vcpkgbinaries) and (entry.name in reduced_path):
+            reduced_path.remove(path)
+reduced_path.remove(exedir)
 wholeenv = dict(os.environ)
 reducedenv = {k : str(wholeenv[k]) for k in wholeenv.keys()}
 reducedenv["PATH"] = os.pathsep.join(reduced_path)
+print(reducedenv["PATH"])
 allreadydeployed = []
+
+expr = re.compile(r"(([a-z]|[A-Z]|[0-9]|[_]|[-]|[.])+(.dll)){1}([ ]|[\t])+Error")
+if argdict["exe_dlls"]:
+    systemdlls = set(glob.glob(os.path.join(exedir, "DLLs", "*.dll"),recursive=False))
+    for dll in systemdlls:
+        print("Copying exe folder dll %s to %s" % (dll, filedir))
+        destfile = os.path.join(filedir, os.path.basename(dll))
+        copyfile(dll, destfile)
 while len(filestodeploy)>0:
     filetodeploy : str = filestodeploy.pop(0)
     if filetodeploy in allreadydeployed:
@@ -82,16 +100,10 @@ while len(filestodeploy)>0:
     print("Deploying stuff for %s" % (filetodeploy,))
     result = subprocess.run([windeployqt_exe, filetodeploy, "--opengl", "--angle"], capture_output=True, text=True)
     print(result.stdout)
-
-    if os.path.basename(filetodeploy) == "python310.dll":
-        allmatches = ["zlib1.dll"]
-    else:
-        expr = re.compile(r"(([a-z]|[A-Z]|[0-9]|[_]|[-]){1}([a-z]|[A-Z]|[0-9]|[_]|[-]|[ ])*(.dll){1})( [\(NOT_FOUND\)|\(ApplicationDirectory\)]){1}")
-        result = \
-            subprocess.run("%s -chain %s -depth %d" % (dependencies_exe, filetodeploy, argdict["depth"]),\
-                capture_output=True, text=True, env=reducedenv)
-        # print(result.stdout)
-        allmatches = [ elem[0] for elem in re.findall(expr, result.stdout)]
+    result = \
+        subprocess.run("%s deps %s --show all" % (dlldiag_exe, filetodeploy),\
+            capture_output=True, text=True, env=reducedenv)
+    allmatches = [ elem[0] for elem in re.findall(expr, result.stdout)]
     for match in allmatches:
         if match in vcpkgbinaries:
             fullmatch = os.path.join(vcpkgbin, match)
