@@ -80,10 +80,10 @@ for path in reduced_path:
     if not os.path.exists(path):
         reduced_path.remove(path)
         continue
-    if (not path==exedir) and (not path==dlldiag_dir) and (vcpkgroot in path):
+    if (not path==exedir) and (not path==dlldiag_dir) and (vcpkgroot in path) and (path in reduced_path):
         reduced_path.remove(path)
     for entry in os.scandir(path):
-        if entry.is_file() and (entry.name in vcpkgbinaries) and (entry.name in reduced_path):
+        if entry.is_file() and (entry.name in vcpkgbinaries) and (path in reduced_path):
             reduced_path.remove(path)
 wholeenv = dict(os.environ)
 reducedenv = {k : str(wholeenv[k]) for k in wholeenv.keys()}
