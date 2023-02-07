@@ -37,15 +37,15 @@ argdict = vars(args)
 print(argdict)
 filepath = argdict["filepath"]
 useqt = argdict["qt"]
-filestodeploy = []
+filestodeploy : set[str] = set()
 if os.path.isfile(filepath):
     filedir = os.path.dirname(filepath)
-    filestodeploy.append(filepath)
+    filestodeploy.add(filepath)
 elif os.path.isdir(filepath):
     filedir = filepath
     for entry in os.scandir(path=filedir) :
         if entry.is_file() and entry.name.endswith(".pyd"):
-            filestodeploy.append(os.path.join(filedir, entry.name))
+            filestodeploy.add(os.path.join(filedir, entry.name))
 else:
     raise ValueError("%s is not a file or directory" % (filepath,))
 vcpkgbin = argdict["vcpkgbin"]
@@ -59,7 +59,7 @@ force = argdict["force"]
 if argdict["extra_paths"] is not None:
     extra_paths = list(argdict["extra_paths"])
     for path in extra_paths:
-        extrabinaries = extrabinaries.union({f for f in set(glob.glob(os.path.join(path,"*.dll"), recursive=False)) if os.path.basename(f) not in vcpkgbinaries})
+        extrabinaries.update({f for f in set(glob.glob(os.path.join(path,"*.dll"), recursive=False)) if os.path.basename(f) not in vcpkgbinaries})
 
 
 reduced_path = list(str.split(os.getenv("PATH"), sep=os.pathsep))
@@ -89,17 +89,18 @@ wholeenv = dict(os.environ)
 reducedenv = {k : str(wholeenv[k]) for k in wholeenv.keys()}
 reducedenv["PATH"] = os.pathsep.join(reduced_path)
 print(reducedenv["PATH"])
-allreadydeployed = []
+allreadydeployed : set[str] = set()
 
 expr = re.compile(r"(([a-z]|[A-Z]|[0-9]|[_]|[-]|[.])+(.dll)){1}([ ]|[\t])+Error")
 if argdict["exe_dlls"]:
     systemdlls = set(glob.glob(os.path.join(exedir, "DLLs", "*.dll"),recursive=False))
+    systemdlls.add(os.path.join(exedir,"python%d%d.dll" % (sys.version_info.major, sys.version_info.minor)))
     for dll in systemdlls:
         print("Copying exe folder dll %s to %s" % (dll, filedir))
         destfile = os.path.join(filedir, os.path.basename(dll))
         copyfile(dll, destfile)
 while len(filestodeploy)>0:
-    filetodeploy : str = filestodeploy.pop(0)
+    filetodeploy : str = filestodeploy.pop()
     if filetodeploy in allreadydeployed:
         continue
     print("Deploying stuff for %s" % (filetodeploy,))
@@ -117,7 +118,7 @@ while len(filestodeploy)>0:
             if force or (not os.path.exists(destfile)):
                 print("Copying vcpkg binary %s to %s" % (fullmatch, filedir))
                 copyfile(fullmatch, destfile)
-            filestodeploy.append(destfile)
+            filestodeploy.add(destfile)
         else:
             for extrabinary in extrabinaries:
                 extrabinary_base = os.path.basename(extrabinary)
@@ -126,9 +127,9 @@ while len(filestodeploy)>0:
                     if force or (not os.path.exists(destfile)):
                         print("Copying extra binary %s to %s" % (extrabinary, filedir))
                         copyfile(extrabinary, destfile)
-                    filestodeploy.append(destfile)
+                    filestodeploy.add(destfile)
                     break
 
-    allreadydeployed.append(filetodeploy)
+    allreadydeployed.add(filetodeploy)
 
         
